@@ -192,7 +192,6 @@
           appId: "1:168894868190:web:0fc6e560aad5aec3afb04f"
         };
 
-        // Инициализация Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
@@ -316,18 +315,30 @@
                 if (originalImage) loadImage(originalImage.src);
             });
 
+            // === УДАЛЕНИЕ ФОНА С ОБХОДОМ ОШИБОК FETCH ===
             removeBgBtn.addEventListener('click', async () => {
                 if (!currentFile) return;
 
                 loader.classList.add('active');
-                loaderText.textContent = 'Нейросеть загружается (первый раз ~40МБ)...';
+                loaderText.textContent = 'Нейросеть загружается...';
 
                 try {
-                    const blob = await removeBackground(currentFile, {
-                        model: "isnet_quint8", 
-                        device: "cpu",         
-                        output: { format: "image/png" }
+                    // Создаем URL-объект для файла
+                    const fileUrl = URL.createObjectURL(currentFile);
+
+                    // Вызываем библиотеку с правильными настройками
+                    const blob = await removeBackground(fileUrl, {
+                        model: "isnet_quint8", // Самая легкая модель
+                        device: "cpu",         // Работает везде
+                        // Отключаем все проверки CORS и воркеров (из-за них падало)
+                        debug: false,
+                        progress: (key, current, total) => {
+                            loaderText.textContent = `Загрузка: ${Math.round((current/total)*100)}%`;
+                        }
                     });
+
+                    // Убираем за собой
+                    URL.revokeObjectURL(fileUrl);
 
                     loaderText.textContent = 'Применяем результат...';
                     const url = URL.createObjectURL(blob);
@@ -341,12 +352,15 @@
                         resetFilters();
                         applyFilters();
                         loader.classList.remove('active');
+                        
+                        // Освобождаем память
+                        URL.revokeObjectURL(url);
                     };
                     newImg.src = url;
 
                 } catch (error) {
                     console.error("Ошибка удаления фона:", error);
-                    alert('Ошибка: ' + error.message + '\n\nПопробуйте отключить блокировщик рекламы или использовать другое фото.');
+                    alert('Ошибка: ' + error.message + '\n\nПопробуйте использовать другое фото.');
                     loader.classList.remove('active');
                 }
             });

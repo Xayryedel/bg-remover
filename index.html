@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PhotoLab — редактор и удаление фона</title>
-    <!-- Подключение стилей -->
     <link rel="stylesheet" href="style.css">
-    <!-- Шрифты -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,11 +13,10 @@
 
     <header>
         <div class="logo"><span class="dot"></span> PhotoLab</div>
-        <div class="pill">Local & Privacy</div>
+        <div class="pill">AI Powered</div>
     </header>
 
     <div class="workspace">
-        <!-- Область холста -->
         <div class="canvas-area" id="canvasArea">
             <div class="empty-state" id="emptyState">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -30,9 +27,14 @@
                 <p>Загрузите изображение, чтобы начать</p>
             </div>
             <canvas id="canvas" style="display:none;"></canvas>
+            
+            <!-- Лоадер для нейросети -->
+            <div class="loader" id="loader">
+                <div class="spinner"></div>
+                <div class="loader-text" id="loaderText">Загрузка нейросети...</div>
+            </div>
         </div>
 
-        <!-- Панель управления -->
         <div class="sidebar">
             <div>
                 <div class="section-title">Файл</div>
@@ -61,14 +63,14 @@
                 </div>
 
                 <div class="section-title" style="margin-top:24px;">Инструменты</div>
-                <button class="btn ghost" id="removeBgBtn" style="margin-bottom:10px;">🪄 Удалить фон (по цвету)</button>
+                <button class="btn ghost" id="removeBgBtn" style="margin-bottom:10px;">✨ Удалить фон (AI)</button>
                 <button class="btn ghost" id="resetBtn" style="margin-bottom:10px;">Сбросить всё</button>
                 <button class="btn primary" id="downloadBtn">Скачать PNG</button>
             </div>
         </div>
     </div>
 
-    <!-- Подключение скрипта в самом конце body -->
-    <script src="script.js"></script>
+    <!-- Подключаем скрипт как модуль для корректной работы импорта -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>

@@ -1,3 +1,6 @@
+// Импортируем библиотеку напрямую с CDN
+import { removeBackground } from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -5,14 +8,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadBtn = document.getElementById('uploadBtn');
     const emptyState = document.getElementById('emptyState');
     const tools = document.getElementById('tools');
+    const loader = document.getElementById('loader');
+    const loaderText = document.getElementById('loaderText');
     
     const removeBgBtn = document.getElementById('removeBgBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const resetBtn = document.getElementById('resetBtn');
 
     let originalImage = null;
+    let currentFile = null; // Храним исходный файл для нейросети
 
-    // Слайдеры
     const brightness = document.getElementById('brightness');
     const contrast = document.getElementById('contrast');
     const saturate = document.getElementById('saturate');
@@ -23,20 +28,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const valSaturate = document.getElementById('valSaturate');
     const valBlur = document.getElementById('valBlur');
 
-    // Открытие диалога выбора файла
-    uploadBtn.addEventListener('click', () => {
-        fileInput.click();
-    });
+    uploadBtn.addEventListener('click', () => fileInput.click());
 
-    // 1. Загрузка файла
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        currentFile = file;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
-            loadImage(event.target.result);
-        };
+        reader.onload = (event) => loadImage(event.target.result);
         reader.readAsDataURL(file);
     });
 
@@ -57,10 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = src;
     }
 
-    // 2. Применение фильтров
     function applyFilters() {
         if (!originalImage) return;
-        
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         const b = brightness.value;
@@ -77,9 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         valBlur.textContent = bl + 'px';
     }
 
-    [brightness, contrast, saturate, blur].forEach(el => {
-        el.addEventListener('input', applyFilters);
-    });
+    [brightness, contrast, saturate, blur].forEach(el => el.addEventListener('input', applyFilters));
 
     function resetFilters() {
         brightness.value = 100;
@@ -90,50 +86,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resetBtn.addEventListener('click', () => {
         resetFilters();
-        if (originalImage) {
-            loadImage(originalImage.src);
+        if (originalImage) loadImage(originalImage.src);
+    });
+
+    // УДАЛЕНИЕ ФОНА ЧЕРЕЗ НЕЙРОСЕТЬ
+    removeBgBtn.addEventListener('click', async () => {
+        if (!currentFile) return;
+
+        loader.classList.add('active');
+        loaderText.textContent = 'Нейросеть загружается (первый раз ~40МБ)...';
+
+        try {
+            // Вызываем функцию removeBackground из импортированной библиотеки
+            const blob = await removeBackground(currentFile, {
+                model: "isnet_quint8", // Легкая модель (~40МБ), чтобы быстрее скачалась
+                device: "cpu",         // Принудительно CPU для стабильности на GitHub Pages
+                output: { format: "image/png" }
+            });
+
+            loaderText.textContent = 'Применяем результат...';
+            const url = URL.createObjectURL(blob);
+            
+            const newImg = new Image();
+            newImg.onload = () => {
+                originalImage = newImg;
+                canvas.width = newImg.width;
+                canvas.height = newImg.height;
+                
+                resetFilters();
+                applyFilters();
+                loader.classList.remove('active');
+            };
+            newImg.src = url;
+
+        } catch (error) {
+            console.error("Ошибка удаления фона:", error);
+            alert('Ошибка: ' + error.message + '\n\nПопробуйте отключить блокировщик рекламы или использовать другое фото.');
+            loader.classList.remove('active');
         }
     });
 
-    // 3. МЕХАНИЧЕСКОЕ УДАЛЕНИЕ ФОНА
-    removeBgBtn.addEventListener('click', () => {
-        if (!originalImage) return;
-
-        // Получаем текущие пиксели с холста
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        
-        // Берем цвет верхнего левого пикселя (0, 0) как эталон фона
-        const bgR = data[0];
-        const bgG = data[1];
-        const bgB = data[2];
-        
-        // Погрешность (50 — хороший баланс)
-        const tolerance = 50; 
-
-        for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i + 1];
-            const b = data[i + 2];
-            
-            // Разница между текущим пикселем и фоном
-            const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
-            
-            // Если похож на фон — делаем прозрачным
-            if (diff < tolerance) {
-                data[i + 3] = 0;
-            }
-        }
-        
-        ctx.putImageData(imageData, 0, 0);
-    });
-
-    // 4. Скачивание
     downloadBtn.addEventListener('click', () => {
         if (!originalImage) return;
-        
         const link = document.createElement('a');
-        link.download = 'photolab-edited.png';
+        link.download = 'photolab-ai-result.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
     });

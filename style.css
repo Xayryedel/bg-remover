@@ -38,7 +38,6 @@ header {
 .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .3px; }
 .logo .dot { width: 12px; height: 12px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 0 20px rgba(110, 231, 183, .7); }
 
-/* Стили авторизации */
 .header-right { display: flex; align-items: center; gap: 10px; }
 .auth-btn { 
     display: flex; align-items: center; gap: 8px; background: #fff; color: #000; 

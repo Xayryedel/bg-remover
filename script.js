@@ -4,14 +4,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('fileInput');
   const emptyState = document.getElementById('emptyState');
   const tools = document.getElementById('tools');
-  const loader = document.getElementById('loader');
-  const loaderText = document.getElementById('loaderText');
+  
   const removeBgBtn = document.getElementById('removeBgBtn');
   const downloadBtn = document.getElementById('downloadBtn');
   const resetBtn = document.getElementById('resetBtn');
 
   let originalImage = null;
-  let currentImageSrc = null;
+  let originalImageData = null; // Храним исходные данные пикселей
 
   // Слайдеры
   const brightness = document.getElementById('brightness');
@@ -31,8 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      currentImageSrc = event.target.result;
-      loadImage(currentImageSrc);
+      loadImage(event.target.result);
     };
     reader.readAsDataURL(file);
   });
@@ -47,6 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
       canvas.style.display = 'block';
       emptyState.style.display = 'none';
       tools.style.display = 'block';
+      
+      // Сохраняем исходное состояние пикселей (без фильтров)
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.filter = 'none';
+      ctx.drawImage(img, 0, 0);
+      originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       
       resetFilters();
       applyFilters();
@@ -65,7 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const s = saturate.value;
     const bl = blur.value;
     
-    // Применяем CSS-фильтры к контексту
     ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%) blur(${bl}px)`;
     ctx.drawImage(originalImage, 0, 0);
     
@@ -88,50 +91,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
   resetBtn.addEventListener('click', () => {
     resetFilters();
-    applyFilters();
+    // Восстанавливаем исходное изображение (возвращаем фон, если он был удален)
+    if (originalImage) {
+        loadImage(originalImage.src);
+    }
   });
 
-  // 3. Удаление фона (ОБНОВЛЕННЫЙ ВЫЗОВ С ПРАВИЛЬНЫМ ПУТЕМ)
-  removeBgBtn.addEventListener('click', async () => {
-    if (!currentImageSrc) return;
+  // 3. МЕХАНИЧЕСКОЕ УДАЛЕНИЕ ФОНА
+  removeBgBtn.addEventListener('click', () => {
+    if (!originalImageData) return;
 
-    loader.classList.add('active');
-    loaderText.textContent = 'Загрузка нейросети (первый раз может быть долго)...';
+    // Получаем текущие пиксели с холста (с учетом фильтров, если они применены)
+    const currentData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = currentData.data;
     
-    try {
-      // Проверяем, загрузилась ли библиотека
-      if (typeof imglyRemoveBackground !== 'function') {
-          throw new Error("Библиотека не загрузилась. Проверьте интернет или блокировщики рекламы.");
-      }
+    // Берем цвет верхнего левого пикселя (0, 0) как эталон фона
+    const bgR = data[0];
+    const bgG = data[1];
+    const bgB = data[2];
+    
+    // Насколько сильно цвет пикселя должен отличаться от фона, чтобы считаться объектом.
+    // 50 — хороший баланс. Если фон удаляется плохо — уменьши, если удаляет лишнее — увеличь.
+    const tolerance = 50; 
 
-      // ПРАВИЛЬНЫЙ ПУТЬ К МОДЕЛИ: указываем publicPath, чтобы GitHub Pages не блокировал
-      const blob = await imglyRemoveBackground(currentImageSrc, {
-          publicPath: "https://staticimgly.com/@imgly/background-removal-data/1.5.8/dist/",
-          device: "cpu",
-          proxyToWorker: true // Помогает обойти блокировки при скачивании
-      });
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
       
-      loaderText.textContent = 'Применяем результат...';
-      const url = URL.createObjectURL(blob);
+      // Вычисляем разницу между текущим пикселем и цветом фона
+      const diff = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
       
-      const newImg = new Image();
-      newImg.onload = () => {
-        originalImage = newImg;
-        canvas.width = newImg.width;
-        canvas.height = newImg.height;
-        
-        resetFilters();
-        applyFilters();
-        loader.classList.remove('active');
-        currentImageSrc = url; 
-      };
-      newImg.src = url;
-      
-    } catch (error) {
-      console.error(error);
-      alert('Ошибка: ' + error.message);
-      loader.classList.remove('active');
+      // Если цвет похож на фон — делаем пиксель прозрачным
+      if (diff < tolerance) {
+        data[i + 3] = 0; // Alpha = 0 (прозрачность)
+      }
     }
+    
+    // Применяем измененные данные обратно на холст
+    ctx.putImageData(currentData, 0, 0);
   });
 
   // 4. Скачивание

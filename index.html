@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PhotoLab — редактор и удаление фона</title>
-<!-- Подключаем стабильную версию библиотеки -->
-<script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8/dist/background-removal.js"></script>
 <link rel="stylesheet" href="style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,11 +24,6 @@
       <p>Загрузите изображение, чтобы начать</p>
     </div>
     <canvas id="canvas" style="display:none;"></canvas>
-    
-    <div class="loader" id="loader">
-      <div class="spinner"></div>
-      <div class="loader-text" id="loaderText">Обработка...</div>
-    </div>
   </div>
 
   <!-- Панель управления -->
@@ -62,8 +55,8 @@
       </div>
 
       <div class="section-title" style="margin-top:24px;">Инструменты</div>
-      <button class="btn ghost" id="removeBgBtn" style="margin-bottom:10px;">✨ Удалить фон</button>
-      <button class="btn ghost" id="resetBtn" style="margin-bottom:10px;">Сбросить фильтры</button>
+      <button class="btn ghost" id="removeBgBtn" style="margin-bottom:10px;">🪄 Удалить фон по цвету</button>
+      <button class="btn ghost" id="resetBtn" style="margin-bottom:10px;">Сбросить всё</button>
       <button class="btn primary" id="downloadBtn">Скачать PNG</button>
     </div>
   </div>

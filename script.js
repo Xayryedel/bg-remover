@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
       emptyState.style.display = 'none';
       tools.style.display = 'block';
       
-      // Сброс фильтров при новой загрузке
       resetFilters();
       applyFilters();
     };
@@ -68,23 +67,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Применяем CSS-фильтры к контексту
     ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%) blur(${bl}px)`;
-    
-    // Если у картинки прозрачный фон (после удаления), он сохранится
     ctx.drawImage(originalImage, 0, 0);
     
-    // Обновляем текст
     valBrightness.textContent = b + '%';
     valContrast.textContent = c + '%';
     valSaturate.textContent = s + '%';
     valBlur.textContent = bl + 'px';
   }
 
-  // Слушатели ползунков
   [brightness, contrast, saturate, blur].forEach(el => {
     el.addEventListener('input', applyFilters);
   });
 
-  // 3. Сброс
   function resetFilters() {
     brightness.value = 100;
     contrast.value = 100;
@@ -97,16 +91,25 @@ document.addEventListener('DOMContentLoaded', () => {
     applyFilters();
   });
 
-  // 4. Удаление фона (IMG.LY)
+  // 3. Удаление фона (ОБНОВЛЕННЫЙ ВЫЗОВ С ПРАВИЛЬНЫМ ПУТЕМ)
   removeBgBtn.addEventListener('click', async () => {
     if (!currentImageSrc) return;
 
     loader.classList.add('active');
-    loaderText.textContent = 'Нейросеть загружается (первый раз может быть долго)...';
+    loaderText.textContent = 'Загрузка нейросети (первый раз может быть долго)...';
     
     try {
-      // Вызов функции из библиотеки
-      const blob = await imglyRemoveBackground(currentImageSrc);
+      // Проверяем, загрузилась ли библиотека
+      if (typeof imglyRemoveBackground !== 'function') {
+          throw new Error("Библиотека не загрузилась. Проверьте интернет или блокировщики рекламы.");
+      }
+
+      // ПРАВИЛЬНЫЙ ПУТЬ К МОДЕЛИ: указываем publicPath, чтобы GitHub Pages не блокировал
+      const blob = await imglyRemoveBackground(currentImageSrc, {
+          publicPath: "https://staticimgly.com/@imgly/background-removal-data/1.5.8/dist/",
+          device: "cpu",
+          proxyToWorker: true // Помогает обойти блокировки при скачивании
+      });
       
       loaderText.textContent = 'Применяем результат...';
       const url = URL.createObjectURL(blob);
@@ -120,24 +123,21 @@ document.addEventListener('DOMContentLoaded', () => {
         resetFilters();
         applyFilters();
         loader.classList.remove('active');
-        
-        // Сохраняем новый src, чтобы можно было удалить фон повторно (если нужно)
-        currentImageSrc = url;
+        currentImageSrc = url; 
       };
       newImg.src = url;
       
     } catch (error) {
       console.error(error);
-      alert('Ошибка удаления фона. Проверьте интернет или попробуйте другое фото.');
+      alert('Ошибка: ' + error.message);
       loader.classList.remove('active');
     }
   });
 
-  // 5. Скачивание
+  // 4. Скачивание
   downloadBtn.addEventListener('click', () => {
     if (!originalImage) return;
     
-    // Экспортируем именно то, что видим на холсте (с учетом фильтров)
     const link = document.createElement('a');
     link.download = 'photolab-edited.png';
     link.href = canvas.toDataURL('image/png');
